@@ -1,0 +1,21 @@
+[package]
+author = ["Mathieu Suen <tryphont@pm.me>"]
+categories = [
+    "embedded",
+    "hardware-support",
+    "no-std",
+]
+desciption = "A platform agniostic driver to interface with teh I2C base MFXSTM32L152 Idd sensor."
+keywords = [
+    "embedded-hal-driver",
+    "iddmonitor",
+]
+license = "0BSD"
+name = "mfsstm32l152"
+readme = "README.md"
+repository = "https://github.com/mathk/mfxstm32l152"
+version = "0.0.1"
+
+[dependencies.embedded-hal]
+features = ["unproven"]
+version = "0.2.2"
