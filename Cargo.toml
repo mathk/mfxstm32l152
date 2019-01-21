@@ -1,11 +1,11 @@
 [package]
-author = ["Mathieu Suen <tryphont@pm.me>"]
+authors = ["Mathieu Suen <tryphont@pm.me>"]
 categories = [
     "embedded",
     "hardware-support",
     "no-std",
 ]
-desciption = "A platform agniostic driver to interface with teh I2C base MFXSTM32L152 Idd sensor."
+description = "A platform agniostic driver to interface with teh I2C base MFXSTM32L152 Idd sensor."
 keywords = [
     "embedded-hal-driver",
     "iddmonitor",

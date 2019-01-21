@@ -1,4 +1,4 @@
-#[no_std]
+#![no_std]
 
 extern crate embedded_hal as hal;
 
@@ -8,7 +8,9 @@ use hal::blocking::i2c::{Write, WriteRead};
 use hal::blocking::delay::{DelayUs};
 use hal::digital::OutputPin;
 
-
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+#[derive(Copy, Clone)]
 pub enum Register {
     // Idd control register (R/W)
     CTRL = 0x80,
