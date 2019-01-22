@@ -1,5 +1,6 @@
 #![no_std]
 
+extern crate cast;
 extern crate embedded_hal as hal;
 
 use core::mem;
@@ -7,6 +8,7 @@ use core::mem;
 use hal::blocking::i2c::{Write, WriteRead};
 use hal::blocking::delay::{DelayUs};
 use hal::digital::OutputPin;
+use cast::u16;
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
@@ -79,29 +81,29 @@ where
         Ok(())
     }
 
-    pub fn config_shunt0(&mut self, data: u16, stabDelay: u8 ) -> Result<(), E> {
-        self.config_shunt(Register::SHUNT0, data, Register::SH0_STABILIZATION, stabDelay)
+    pub fn config_shunt0(&mut self, data: u16, stab_delay: u8 ) -> Result<(), E> {
+        self.config_shunt(Register::SHUNT0, data, Register::SH0_STABILIZATION, stab_delay)
     }
 
-    pub fn config_shunt1(&mut self, data: u16, stabDelay: u8) -> Result<(), E> {
-        self.config_shunt(Register::SHUNT1, data, Register::SH1_STABILIZATION, stabDelay)
+    pub fn config_shunt1(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
+        self.config_shunt(Register::SHUNT1, data, Register::SH1_STABILIZATION, stab_delay)
     }
 
-    pub fn config_shunt2(&mut self, data: u16, stabDelay: u8) -> Result<(), E> {
-        self.config_shunt(Register::SHUNT2, data, Register::SH2_STABILIZATION, stabDelay)
+    pub fn config_shunt2(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
+        self.config_shunt(Register::SHUNT2, data, Register::SH2_STABILIZATION, stab_delay)
     }
 
-    pub fn config_shunt3(&mut self, data: u16, stabDelay: u8) -> Result<(), E> {
-        self.config_shunt(Register::SHUNT3, data, Register::SH3_STABILIZATION, stabDelay)
+    pub fn config_shunt3(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
+        self.config_shunt(Register::SHUNT3, data, Register::SH3_STABILIZATION, stab_delay)
     }
 
-    pub fn config_shunt4(&mut self, data: u16, stabDelay: u8) -> Result<(), E> {
-        self.config_shunt(Register::SHUNT4, data, Register::SH4_STABILIZATION, stabDelay)
+    pub fn config_shunt4(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
+        self.config_shunt(Register::SHUNT4, data, Register::SH4_STABILIZATION, stab_delay)
     }
 
-    fn config_shunt(&mut self, regShunt: Register, data: u16, regDelay: Register, stabDelay: u8) -> Result<(), E> {
-        self.i2c.write(self.address, &[regShunt.addr(), (data >> 8) as u8, (data & 0xFF) as u8])?;
-        self.i2c.write(self.address, &[regDelay.addr(), stabDelay])
+    fn config_shunt(&mut self, reg_shunt: Register, data: u16, reg_delay: Register, stab_delay: u8) -> Result<(), E> {
+        self.i2c.write(self.address, &[reg_shunt.addr(), (data >> 8) as u8, (data & 0xFF) as u8])?;
+        self.i2c.write(self.address, &[reg_delay.addr(), stab_delay])
     }
 
     pub fn last_shunt_used(&mut self) -> Result<u8, E> {
@@ -129,7 +131,7 @@ where
     fn read_register_msb_lsb_u16(&mut self, reg: Register) -> Result<u16, E> {
         let mut buffer: [u8; 2] = unsafe { mem::uninitialized() };
         self.i2c.write_read(self.address, &[reg.addr()], &mut buffer)?;
-        Ok((buffer[0] << 8) & buffer[1])
+        Ok((u16(buffer[0]) << 8) & u16(buffer[1]))
     }
 
     fn write_register(&mut self, reg: Register, data: u8) -> Result<(), E> {
