@@ -12,7 +12,7 @@ I2C run at 100Khz. This value is taken from the stm32cubel4 example.
 
 # Register description
 
-## CTRL: Control register 0x80
+## CTRL: Control register Offset: 0x80
 
 offset bit:
 
@@ -32,8 +32,8 @@ offset bit:
 
 ## SHUNT REGISTER:
 
-There is 5 shunt register in other to configure the ohm for each one of them.
-  
+There is 5 shunt register in other to configure the ohm for each one of them. Size is u16.
+
    * SHUNT0_MSB  0x82
    * SHUNT0_LSB  0x83
    * SHUNT1_MSB  0x84
@@ -44,3 +44,11 @@ There is 5 shunt register in other to configure the ohm for each one of them.
    * SHUNT3_LSB  0x89
    * SHUNT4_MSB  0x8A
    * SHUNT4_LSB  0x8B
+
+## SHUNT_ON_BOARD:
+
+Size u8
+
+## ADR_FW_VERSION Offset: 0x01
+
+Size u16

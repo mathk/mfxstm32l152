@@ -17,6 +17,14 @@ pub enum Register {
     // Read the number of shunt being used in the last idd read
     SHUNT_USED = 0x1A,
 
+    // Shunt on board
+    SHUNTS_ON_BOARD = 0x98,
+
+    // Chip ID
+    ADR_ID = 0x00,
+
+    ADR_FW_VERSION = 0x01,
+
     // Shunt resistor configuration
     // Lets do one incremental write
     SHUNT0 = 0x82, // MSB 0x83
@@ -97,9 +105,31 @@ where
     }
 
     pub fn last_shunt_used(&mut self) -> Result<u8, E> {
+        self.read_register_u8(Register::SHUNT_USED)
+    }
+
+    pub fn shunts_on_board(&mut self) -> Result<u8, E> {
+        self.read_register_u8(Register::SHUNTS_ON_BOARD)
+    }
+
+    pub fn chip_id(&mut self) -> Result<u8, E> {
+        self.read_register_u8(Register::ADR_ID)
+    }
+
+    pub fn firmware_version(&mut self) -> Result<u16, E> {
+        self.read_register_msb_lsb_u16(Register::ADR_FW_VERSION)
+    }
+
+    fn read_register_u8(&mut self, reg: Register) -> Result<u8, E> {
         let mut buffer: [u8; 1] = unsafe { mem::uninitialized() };
-        self.i2c.write_read(self.address, &[Register::SHUNT_USED.addr()], &mut buffer)?;
+        self.i2c.write_read(self.address, &[reg.addr()], &mut buffer)?;
         Ok(buffer[0])
+    }
+
+    fn read_register_msb_lsb_u16(&mut self, reg: Register) -> Result<u16, E> {
+        let mut buffer: [u8; 2] = unsafe { mem::uninitialized() };
+        self.i2c.write_read(self.address, &[reg.addr()], &mut buffer)?;
+        Ok((buffer[0] << 8) & buffer[1])
     }
 
     fn write_register(&mut self, reg: Register, data: u8) -> Result<(), E> {
