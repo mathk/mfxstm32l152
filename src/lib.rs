@@ -65,7 +65,7 @@ pub struct MFX<I2C, GPIO, Delay> {
 
 impl<I2C, GPIO, Delay, E> MFX<I2C, GPIO, Delay>
 where
-    I2C: SerialRead<AutoIncrementI2c, Register, Error = E> + Write<Error = E>,
+    I2C: SerialRead<AutoIncrementI2c, Register, Error = E> + SerialWrite<AutoIncrementI2c, Register, Error = E>,
     GPIO: OutputPin,
     Delay: DelayUs<u8>,
 {
@@ -105,10 +105,10 @@ where
 
     pub fn config_shunt4(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
         self.config_shunt(Register::SHUNT4, data, Register::SH4_STABILIZATION, stab_delay)
-    }
+    }*/
 
     fn config_shunt(&mut self, reg_shunt: Register, data: u16, reg_delay: Register, stab_delay: u8) -> Result<(), E> {
-        self.i2c.write(self.address, &[reg_shunt.addr(), (data >> 8) as u8, (data & 0xFF) as u8])?;
+        self.i2c.write_u16(self.address, reg_shunt.addr(), (data >> 8) as u8, (data & 0xFF) as u8])?;
         self.i2c.write(self.address, &[reg_delay.addr(), stab_delay])
     }
 
