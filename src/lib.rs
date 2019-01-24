@@ -2,9 +2,12 @@
 
 extern crate cast;
 extern crate embedded_hal as hal;
+extern crate i2c_hal_tools;
 
 use core::mem;
 
+use i2c_hal_tools::autoincrement::AutoIncrementI2c;
+use i2c_hal_tools::SerialRead;
 use hal::blocking::i2c::{Write, WriteRead};
 use hal::blocking::delay::{DelayUs};
 use hal::digital::OutputPin;
@@ -27,6 +30,9 @@ pub enum Register {
 
     ADR_FW_VERSION = 0x01,
 
+    // Ampli gain
+    GAIN = 0x8C, // 0x8B is the LSB
+
     // Shunt resistor configuration
     // Lets do one incremental write
     SHUNT0 = 0x82, // MSB 0x83
@@ -43,9 +49,9 @@ pub enum Register {
     SH4_STABILIZATION = 0x94,
 }
 
-impl Register {
-    pub fn addr(self) -> u8 {
-        self as u8
+impl i2c_hal_tools::Register for Register {
+    fn addr(&self) -> u8 {
+        *self as u8
     }
 }
 
@@ -59,7 +65,7 @@ pub struct MFX<I2C, GPIO, Delay> {
 
 impl<I2C, GPIO, Delay, E> MFX<I2C, GPIO, Delay>
 where
-    I2C: WriteRead<Error = E> + Write<Error = E>,
+    I2C: SerialRead<AutoIncrementI2c, Register, Error = E> + Write<Error = E>,
     GPIO: OutputPin,
     Delay: DelayUs<u8>,
 {
@@ -81,7 +87,7 @@ where
         Ok(())
     }
 
-    pub fn config_shunt0(&mut self, data: u16, stab_delay: u8 ) -> Result<(), E> {
+    /*pub fn config_shunt0(&mut self, data: u16, stab_delay: u8 ) -> Result<(), E> {
         self.config_shunt(Register::SHUNT0, data, Register::SH0_STABILIZATION, stab_delay)
     }
 
@@ -110,15 +116,15 @@ where
         self.read_register_u8(Register::SHUNT_USED)
     }
 
-    pub fn shunts_on_board(&mut self) -> Result<u8, E> {
+   pub fn shunts_on_board(&mut self) -> Result<u8, E> {
         self.read_register_u8(Register::SHUNTS_ON_BOARD)
-    }
+    }*/
 
     pub fn chip_id(&mut self) -> Result<u8, E> {
-        self.read_register_u8(Register::ADR_ID)
+        self.i2c.read_u8(self.address, Register::ADR_ID)
     }
 
-    pub fn firmware_version(&mut self) -> Result<u16, E> {
+   /* pub fn firmware_version(&mut self) -> Result<u16, E> {
         self.read_register_msb_lsb_u16(Register::ADR_FW_VERSION)
     }
 
@@ -136,5 +142,5 @@ where
 
     fn write_register(&mut self, reg: Register, data: u8) -> Result<(), E> {
         self.i2c.write(self.address, &[reg.addr(), data])
-    }
+    }*/
 }

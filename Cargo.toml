@@ -16,6 +16,9 @@ readme = "README.md"
 repository = "https://github.com/mathk/mfxstm32l152"
 version = "0.0.1"
 
+[dependencies]
+i2c-hal-tools = { path = "../i2c-hal-tools" }
+
 [dependencies.cast]
 default-features = false
 version = "0.2.2"
