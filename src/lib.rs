@@ -4,14 +4,11 @@ extern crate cast;
 extern crate embedded_hal as hal;
 extern crate i2c_hal_tools;
 
-use core::mem;
 
 use i2c_hal_tools::autoincrement::AutoIncrementI2c;
-use i2c_hal_tools::SerialRead;
-use hal::blocking::i2c::{Write, WriteRead};
+use i2c_hal_tools::{SerialRead, SerialWrite};
 use hal::blocking::delay::{DelayUs};
 use hal::digital::OutputPin;
-use cast::u16;
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
@@ -87,7 +84,7 @@ where
         Ok(())
     }
 
-    /*pub fn config_shunt0(&mut self, data: u16, stab_delay: u8 ) -> Result<(), E> {
+    pub fn config_shunt0(&mut self, data: u16, stab_delay: u8 ) -> Result<(), E> {
         self.config_shunt(Register::SHUNT0, data, Register::SH0_STABILIZATION, stab_delay)
     }
 
@@ -105,42 +102,26 @@ where
 
     pub fn config_shunt4(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
         self.config_shunt(Register::SHUNT4, data, Register::SH4_STABILIZATION, stab_delay)
-    }*/
+    }
 
     fn config_shunt(&mut self, reg_shunt: Register, data: u16, reg_delay: Register, stab_delay: u8) -> Result<(), E> {
-        self.i2c.write_u16(self.address, reg_shunt.addr(), (data >> 8) as u8, (data & 0xFF) as u8])?;
-        self.i2c.write(self.address, &[reg_delay.addr(), stab_delay])
+        self.i2c.write_be_u16(self.address, reg_shunt, data)?;
+        self.i2c.write_u8(self.address, reg_delay, stab_delay)
     }
 
     pub fn last_shunt_used(&mut self) -> Result<u8, E> {
-        self.read_register_u8(Register::SHUNT_USED)
+        self.i2c.read_u8(self.address, Register::SHUNT_USED)
     }
 
    pub fn shunts_on_board(&mut self) -> Result<u8, E> {
-        self.read_register_u8(Register::SHUNTS_ON_BOARD)
-    }*/
+        self.i2c.read_u8(self.address, Register::SHUNTS_ON_BOARD)
+    }
 
     pub fn chip_id(&mut self) -> Result<u8, E> {
         self.i2c.read_u8(self.address, Register::ADR_ID)
     }
 
-   /* pub fn firmware_version(&mut self) -> Result<u16, E> {
-        self.read_register_msb_lsb_u16(Register::ADR_FW_VERSION)
+    pub fn firmware_version(&mut self) -> Result<u16, E> {
+        self.i2c.read_be_u16(self.address, Register::ADR_FW_VERSION)
     }
-
-    fn read_register_u8(&mut self, reg: Register) -> Result<u8, E> {
-        let mut buffer: [u8; 1] = unsafe { mem::uninitialized() };
-        self.i2c.write_read(self.address, &[reg.addr()], &mut buffer)?;
-        Ok(buffer[0])
-    }
-
-    fn read_register_msb_lsb_u16(&mut self, reg: Register) -> Result<u16, E> {
-        let mut buffer: [u8; 2] = unsafe { mem::uninitialized() };
-        self.i2c.write_read(self.address, &[reg.addr()], &mut buffer)?;
-        Ok((u16(buffer[0]) << 8) & u16(buffer[1]))
-    }
-
-    fn write_register(&mut self, reg: Register, data: u8) -> Result<(), E> {
-        self.i2c.write(self.address, &[reg.addr(), data])
-    }*/
 }
