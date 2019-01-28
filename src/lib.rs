@@ -24,12 +24,25 @@ pub enum RoRegister {
 
     // Read the number of shunt being used in the last idd read
     IDD_SHUNT_USED = 0x1A,
+
+
+}
+
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+#[derive(Copy, Clone)]
+pub enum PreDelayUnit {
+    TIME_5_MS = 0x00,
+    TIME_20_MS = 0x80,
 }
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]
 pub enum Register {
+    // System control register
+    SYS_CTRL = 0x40,
+
     // Idd control register (R/W)
     IDD_CTRL = 0x80,
 
@@ -44,6 +57,8 @@ pub enum Register {
 
     // Ampli gain
     IDD_GAIN = 0x8C, // 0x8B is the LSB
+    // Vdd Min value u16
+    IDD_VDD_MIN = 0x8E, // 0x8F is the MSB
 
     // Shunt stabilization in millisecond
     IDD_SH0_STABILIZATION = 0x90,
@@ -54,6 +69,26 @@ pub enum Register {
 
     // Shunt on board
     IDD_SHUNTS_ON_BOARD = 0x98,
+}
+
+pub enum NbShunt {
+    SHUNT_NB_1 = 0x01,
+    SHUNT_NB_2 = 0x02,
+    SHUNT_NB_3 = 0x03,
+    SHUNT_NB_4 = 0x04,
+    SHUNT_NB_5 = 0x05,
+}
+
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+#[derive(Copy, Clone)]
+enum SysCtrl {
+    SWRST = 0x80,
+    STANDBY = 0x40,
+    ALTERNATE_GPIO_EN = 0x08, //* by the way if IDD and TS are enabled they take automatically the AF pins*/
+    IDD_EN = 0x04,
+    TS_EN = 0x02,
+    GPIO_EN = 0x01,
 }
 
 impl R for Register {
@@ -98,39 +133,64 @@ where
         self.wakup.set_high();
         self.delay.delay_us(10);
         self.wakup.set_low();
+        let mut mode = self.i2c.read_u8(self.address, Register::SYS_CTRL)?;
+        mode |= SysCtrl::IDD_EN as u8;
+        self.i2c.write_u8(self.address, Register::SYS_CTRL, mode)?;
         Ok(())
     }
 
-    pub fn config_shunt0(&mut self, data: u16, stab_delay: u8 ) -> Result<(), E> {
-        self.config_shunt(Register::IDD_SHUNT0, data, Register::IDD_SH0_STABILIZATION, stab_delay)
+
+
+    pub fn set_idd_shunt0(&mut self, data: u16, stab_delay: u8 ) -> Result<(), E> {
+        self.set_idd_shunt(Register::IDD_SHUNT0, data, Register::IDD_SH0_STABILIZATION, stab_delay)
     }
 
-    pub fn config_shunt1(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
-        self.config_shunt(Register::IDD_SHUNT1, data, Register::IDD_SH1_STABILIZATION, stab_delay)
+    pub fn set_idd_shunt1(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
+        self.set_idd_shunt(Register::IDD_SHUNT1, data, Register::IDD_SH1_STABILIZATION, stab_delay)
     }
 
-    pub fn config_shunt2(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
-        self.config_shunt(Register::IDD_SHUNT2, data, Register::IDD_SH2_STABILIZATION, stab_delay)
+    pub fn set_idd_shunt2(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
+        self.set_idd_shunt(Register::IDD_SHUNT2, data, Register::IDD_SH2_STABILIZATION, stab_delay)
     }
 
-    pub fn config_shunt3(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
-        self.config_shunt(Register::IDD_SHUNT3, data, Register::IDD_SH3_STABILIZATION, stab_delay)
+    pub fn set_idd_shunt3(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
+        self.set_idd_shunt(Register::IDD_SHUNT3, data, Register::IDD_SH3_STABILIZATION, stab_delay)
     }
 
-    pub fn config_shunt4(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
-        self.config_shunt(Register::IDD_SHUNT4, data, Register::IDD_SH4_STABILIZATION, stab_delay)
+    pub fn set_idd_shunt4(&mut self, data: u16, stab_delay: u8) -> Result<(), E> {
+        self.set_idd_shunt(Register::IDD_SHUNT4, data, Register::IDD_SH4_STABILIZATION, stab_delay)
     }
 
-    fn config_shunt(&mut self, reg_shunt: Register, data: u16, reg_delay: Register, stab_delay: u8) -> Result<(), E> {
+    fn set_idd_shunt(&mut self, reg_shunt: Register, data: u16, reg_delay: Register, stab_delay: u8) -> Result<(), E> {
         self.i2c.write_be_u16(self.address, reg_shunt, data)?;
         self.i2c.write_u8(self.address, reg_delay, stab_delay)
     }
 
-    pub fn last_shunt_used(&mut self) -> Result<u8, E> {
+    pub fn set_idd_gain(&mut self, value: u16) -> Result<(), E> {
+        self.i2c.write_be_u16(self.address, Register::IDD_GAIN, value)
+    }
+
+    pub fn set_idd_pre_delay(&mut self, unit: PreDelayUnit, value: u8) -> Result<(), E>{
+        // We cap the value to max.
+        let value = if value > 0x80 {
+            0x7F
+        } else {
+            value
+        };
+
+        let unit = unit as u8;
+        self.i2c.write_u8(self.address, Register::IDD_PRE_DELAY, unit & value)
+    }
+
+    pub fn set_idd_vdd_min(&mut self, value: u16) -> Result<(), E> {
+        self.i2c.write_be_u16(self.address, Register::IDD_VDD_MIN, value)
+    }
+
+    pub fn idd_last_shunt_used(&mut self) -> Result<u8, E> {
         self.i2c.read_u8(self.address, RoRegister::IDD_SHUNT_USED)
     }
 
-   pub fn shunts_on_board(&mut self) -> Result<u8, E> {
+   pub fn idd_shunts_on_board(&mut self) -> Result<u8, E> {
         self.i2c.read_u8(self.address, Register::IDD_SHUNTS_ON_BOARD)
     }
 
