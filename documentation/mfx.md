@@ -34,15 +34,15 @@ offset bit:
 
 There is 5 shunt register in other to configure the ohm for each one of them. Size is u16.
 
-   * SHUNT0_MSB  0x82
+   * SHUNT0_MSB  0x82 Value of the shunt resitor in *miliohm*
    * SHUNT0_LSB  0x83
-   * SHUNT1_MSB  0x84
+   * SHUNT1_MSB  0x84 Value of the shunt resitor in *ohm*
    * SHUNT1_LSB  0x85
-   * SHUNT2_MSB  0x86
+   * SHUNT2_MSB  0x86 Value of the shunt resitor in *ohm*
    * SHUNT2_LSB  0x87
-   * SHUNT3_MSB  0x88
+   * SHUNT3_MSB  0x88 Value of the shunt resitor in *ohm*
    * SHUNT3_LSB  0x89
-   * SHUNT4_MSB  0x8A
+   * SHUNT4_MSB  0x8A Value of the shunt resitor in *ohm*
    * SHUNT4_LSB  0x8B
 
 ## SHUNT_ON_BOARD:

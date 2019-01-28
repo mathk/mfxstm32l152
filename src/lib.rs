@@ -67,10 +67,15 @@ pub enum Register {
     IDD_SH3_STABILIZATION = 0x93,
     IDD_SH4_STABILIZATION = 0x94,
 
+    IDD_NBR_OF_MEAS = 0x96,
+
     // Shunt on board
     IDD_SHUNTS_ON_BOARD = 0x98,
 }
 
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+#[derive(Copy, Clone)]
 pub enum NbShunt {
     SHUNT_NB_1 = 0x01,
     SHUNT_NB_2 = 0x02,
@@ -139,7 +144,26 @@ where
         Ok(())
     }
 
+    pub fn set_idd_ctrl(&mut self, calibration_disabled: bool, vref_disabled: bool, nb_shunt: NbShunt) -> Result<(), E> {
+        let cal = if calibration_disabled {
+            0x80
+        } else {
+            0x00
+        };
 
+        let vref = if vref_disabled {
+            0x40
+        } else {
+            0x00
+        };
+
+        let value = ((nb_shunt as u8) << 1) | cal | vref;
+        self.i2c.write_u8(self.address, Register::IDD_CTRL, value)
+    }
+
+    pub fn set_idd_nb_measurment(&mut self, nb: u8) -> Result<(), E> {
+        self.i2c.write_u8(self.address, Register::IDD_NBR_OF_MEAS, nb)
+    }
 
     pub fn set_idd_shunt0(&mut self, data: u16, stab_delay: u8 ) -> Result<(), E> {
         self.set_idd_shunt(Register::IDD_SHUNT0, data, Register::IDD_SH0_STABILIZATION, stab_delay)
