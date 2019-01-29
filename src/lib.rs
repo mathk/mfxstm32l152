@@ -5,6 +5,7 @@ extern crate embedded_hal as hal;
 extern crate i2c_hal_tools;
 
 
+use i2c_hal_tools::noincrement::NoIncrementI2c;
 use i2c_hal_tools::autoincrement::AutoIncrementI2c;
 use i2c_hal_tools::{SerialRead, SerialWrite};
 use hal::blocking::delay::{DelayUs};
@@ -22,16 +23,20 @@ pub enum RoRegister {
     // Firmware version
     ADR_FW_VERSION = 0x01,
 
+    // Read error code 0 ok, 1 timeout, 2 no value
+    ERROR_MSG = 0x04,
+
     // Read the number of shunt being used in the last idd read
     IDD_SHUNT_USED = 0x1A,
 
-
+    // Value in 24 bits MSB MID LSB
+    IDD_VALUE = 0x14,
 }
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]
-pub enum PreDelayUnit {
+pub enum DelayUnit {
     TIME_5_MS = 0x00,
     TIME_20_MS = 0x80,
 }
@@ -40,6 +45,8 @@ pub enum PreDelayUnit {
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]
 pub enum Register {
+
+
     // System control register
     SYS_CTRL = 0x40,
 
@@ -68,6 +75,9 @@ pub enum Register {
     IDD_SH4_STABILIZATION = 0x94,
 
     IDD_NBR_OF_MEAS = 0x96,
+
+    // Delay between each measurment
+    IDD_MEAS_DELTA_DELAY = 0x97,
 
     // Shunt on board
     IDD_SHUNTS_ON_BOARD = 0x98,
@@ -119,9 +129,9 @@ pub struct MFX<I2C, GPIO, Delay> {
 
 impl<I2C, GPIO, Delay, E> MFX<I2C, GPIO, Delay>
 where
-    I2C: SerialRead<AutoIncrementI2c, RoRegister, Error = E> + SerialRead<AutoIncrementI2c, Register, Error = E> + SerialWrite<AutoIncrementI2c, Register, Error = E>,
+    I2C: SerialRead<AutoIncrementI2c, RoRegister, Error = E> + SerialRead<NoIncrementI2c, Register, Error = E> + SerialWrite<NoIncrementI2c, Register, Error = E>,
     GPIO: OutputPin,
-    Delay: DelayUs<u8>,
+    Delay: DelayUs<u32>,
 {
     pub fn new(i2c: I2C, wakup: GPIO, delay: Delay, address: u8) -> Result<Self, E> {
         let mut mfx = Self {
@@ -156,9 +166,10 @@ where
         } else {
             0x00
         };
-
-        let value = ((nb_shunt as u8) << 1) | cal | vref;
-        self.i2c.write_u8(self.address, Register::IDD_CTRL, value)
+        let nb_shunt = nb_shunt as u8;
+        let value = (nb_shunt << 1) | cal | vref;
+        self.i2c.write_u8(self.address, Register::IDD_CTRL, value)?;
+        self.i2c.write_u8(self.address, Register::IDD_SHUNTS_ON_BOARD, nb_shunt)
     }
 
     pub fn set_idd_nb_measurment(&mut self, nb: u8) -> Result<(), E> {
@@ -194,28 +205,51 @@ where
         self.i2c.write_be_u16(self.address, Register::IDD_GAIN, value)
     }
 
-    pub fn set_idd_pre_delay(&mut self, unit: PreDelayUnit, value: u8) -> Result<(), E>{
-        // We cap the value to max.
-        let value = if value > 0x80 {
-            0x7F
-        } else {
-            value
-        };
-
+    pub fn set_idd_pre_delay(&mut self, unit: DelayUnit, value: u8) -> Result<(), E>{
+        let value = self.cap_delay_value(value);
         let unit = unit as u8;
         self.i2c.write_u8(self.address, Register::IDD_PRE_DELAY, unit & value)
+    }
+
+    pub fn set_idd_meas_delta_delay(&mut self, unit: DelayUnit, value: u8) -> Result<(), E> {
+        let value = self.cap_delay_value(value);
+        let unit = unit as u8;
+        self.i2c.write_u8(self.address, Register::IDD_MEAS_DELTA_DELAY, unit & value)
     }
 
     pub fn set_idd_vdd_min(&mut self, value: u16) -> Result<(), E> {
         self.i2c.write_be_u16(self.address, Register::IDD_VDD_MIN, value)
     }
 
+    pub fn idd_start(&mut self) -> Result<(), E> {
+        let mut mode = self.i2c.read_u8(self.address, Register::IDD_CTRL)?;
+        mode |= 1;
+        self.i2c.write_u8(self.address, Register::IDD_CTRL, mode)
+    }
+
+    pub fn idd_get_value(&mut self) -> Result<u32, E> {
+        // TODO: Fix delay, maybe use IT.
+        self.delay.delay_us(500_000);
+        self.delay.delay_us(500_000);
+        self.delay.delay_us(500_000);
+        self.delay.delay_us(500_000);
+        self.i2c.read_be_u24(self.address, RoRegister::IDD_VALUE)
+    }
+
+    pub fn idd_ctrl(&mut self) -> Result<u8, E> {
+        self.i2c.read_u8(self.address, Register::IDD_CTRL)
+    }
+
     pub fn idd_last_shunt_used(&mut self) -> Result<u8, E> {
         self.i2c.read_u8(self.address, RoRegister::IDD_SHUNT_USED)
     }
 
-   pub fn idd_shunts_on_board(&mut self) -> Result<u8, E> {
+    pub fn idd_shunts_on_board(&mut self) -> Result<u8, E> {
         self.i2c.read_u8(self.address, Register::IDD_SHUNTS_ON_BOARD)
+    }
+
+    pub fn error_code(&mut self) -> Result<u8, E> {
+        self.i2c.read_u8(self.address, RoRegister::ERROR_MSG)
     }
 
     pub fn chip_id(&mut self) -> Result<u8, E> {
@@ -224,5 +258,13 @@ where
 
     pub fn firmware_version(&mut self) -> Result<u16, E> {
         self.i2c.read_be_u16(self.address, RoRegister::ADR_FW_VERSION)
+    }
+
+    fn cap_delay_value(&mut self, value: u8) -> u8 {
+        if value > 0x80 {
+            0x7F
+        } else {
+            value
+        }
     }
 }
