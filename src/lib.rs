@@ -12,6 +12,36 @@ use hal::blocking::delay::{DelayUs};
 use hal::digital::OutputPin;
 use i2c_hal_tools::Register as R;
 
+use core::fmt;
+
+
+pub struct Ampere {
+    value: u32,
+    exponent: u8,
+}
+
+impl Ampere {
+
+    pub fn new(value: u32, exponent: u8) -> Self {
+        Self {
+            value,
+            exponent,
+        }
+    }
+}
+
+impl fmt::Display for Ampere {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (unit, div) = if self.exponent < 3 {
+            ("m", 10u32.pow(3 - self.exponent as u32))
+        } else if self.exponent < 6 {
+            ("u", 10u32.pow(6 - self.exponent as u32))
+        } else {
+            ("n", 10u32.pow(9 - self.exponent as u32))
+        };
+        write!(f, "{}{}A", self.value * div, unit)
+    }
+}
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
@@ -227,13 +257,14 @@ where
         self.i2c.write_u8(self.address, Register::IDD_CTRL, mode)
     }
 
-    pub fn idd_get_value(&mut self) -> Result<u32, E> {
+    pub fn idd_get_value(&mut self) -> Result<Ampere, E> {
         // TODO: Fix delay, maybe use IT.
         self.delay.delay_us(500_000);
         self.delay.delay_us(500_000);
         self.delay.delay_us(500_000);
         self.delay.delay_us(500_000);
-        self.i2c.read_be_u24(self.address, RoRegister::IDD_VALUE)
+        let value = self.i2c.read_be_u24(self.address, RoRegister::IDD_VALUE)?;
+        Ok(Ampere::new(value, 8))
     }
 
     pub fn idd_ctrl(&mut self) -> Result<u8, E> {
